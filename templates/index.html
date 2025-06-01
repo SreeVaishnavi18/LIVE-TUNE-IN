@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <title>Indian Radio</title>
+</head>
+
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h1 class="text-center mb-4">Indian Radio</h1>
+
+                        <div class="form-group">
+                            <label for="userType">Select User Type:</label>
+                            <select class="form-control" id="userType" onchange="toggleUserType()">
+                                <option value="guest">Guest</option>
+                                <option value="email">Email</option>
+                            </select>
+                        </div>
+
+                        <div id="guestInput">
+                            <div class="form-group">
+                                <label for="name">Enter Name:</label>
+                                <input type="text" class="form-control" id="name">
+                            </div>
+                            <button class="btn btn-primary" onclick="startGuestSession()">Start Session</button>
+                        </div>
+
+                        <div id="emailInput" style="display:none;">
+                            <div class="form-group">
+                                <label for="email">Enter Email:</label>
+                                <input type="email" class="form-control" id="email">
+                            </div>
+                            <button class="btn btn-primary" onclick="submitDetails()">Submit</button>
+                        </div>
+
+                        <div id="streamingDetails" style="display:none;">
+                            <div class="form-group">
+                                <label for="state">Select State:</label>
+                                <select class="form-control" id="state" onchange="getStations()">
+                                    <option value="delhi">Delhi</option>
+                                    <option value="mumbai">Mumbai</option>
+                                    <option value="tamil nadu">Tamil Nadu</option>
+                                    <!-- Add more options for other states -->
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="station">Select Station:</label>
+                                <select class="form-control" id="station" onchange="playStation()">
+                                </select>
+                            </div>
+
+                            <audio id="audioPlayer" controls class="mb-3"></audio>
+
+                            <button class="btn btn-success mr-2" id="recordButton" onclick="toggleRecording()">Start
+                                Recording</button>
+                            <button class="btn btn-danger mr-2" id="stopButton" onclick="stopRecording()" disabled>Stop
+                                Recording</button>
+                            <button class="btn btn-primary mr-2" id="playRecordingButton" onclick="playRecording()"
+                                disabled>Play Recording</button>
+                            <button class="btn btn-info mr-2" id="downloadRecordingButton"
+                                onclick="downloadRecording()" disabled>Download Recording</button>
+
+                            <button class="btn btn-warning" id="leaveSessionButton" onclick="leaveSession()">Leave
+                                Session</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.3/socket.io.js"></script>
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        function toggleUserType() {
+            const userType = document.getElementById('userType').value;
+            const emailInput = document.getElementById('emailInput');
+            const guestInput = document.getElementById('guestInput');
+
+            if (userType === 'email') {
+                emailInput.style.display = 'block';
+                guestInput.style.display = 'none';
+            } else {
+                emailInput.style.display = 'none';
+                guestInput.style.display = 'block';
+            }
+        }
+
+        function startGuestSession() {
+            const guestName = document.getElementById('name').value;
+            socket.emit('authenticate_guest', {'name': guestName});
+            document.getElementById('streamingDetails').style.display = 'block';
+        }
+
+ 
+
+
+        function showStreamingDetails() {
+            const streamingDetails = document.getElementById('streamingDetails');
+            streamingDetails.style.display = 'block';
+        }
+
+        let userEmail;  // Variable to store the user's email
+
+function submitDetails() {
+    const state = document.getElementById('state').value;
+    const station = document.getElementById('station').value;
+    const userType = document.getElementById('userType').value;
+
+    if (userType === 'email') {
+        userEmail = document.getElementById('email').value;
+    }
+     showStreamingDetails();
+    get_session_details(userType, '', userEmail, state, station, showStreamingDetails);
+}
+
+function leaveSession() {
+    if (userEmail) {
+        // Send the email only when leaving the session
+        fetch('/send_email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: '',
+                email: userEmail,
+                state: document.getElementById('state').value,
+                station: document.getElementById('station').value,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data.message);
+        })
+        .catch(error => console.error('Error sending email:', error));
+
+        userEmail = '';  // Clear the stored email after submitting
+    }
+
+    closeStreamingSession();
+}
+
+
+function closeStreamingSession() {
+    const streamingDetails = document.getElementById('streamingDetails');
+    streamingDetails.style.display = 'none';
+    window.location.href = "/";
+    // Add any additional logic to close the streaming session if needed
+}
+
+
+        function getStations() {
+            const state = document.getElementById('state').value;
+            socket.emit('get_stations', {'state': state});
+        }
+
+        function playStation() {
+            const state = document.getElementById('state').value;
+            const station = document.getElementById('station').value;
+            socket.emit('play_station', {'state': state, 'station': station});
+        }
+
+        function toggleRecording() {
+            const state = document.getElementById('state').value;
+            const station = document.getElementById('station').value;
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = function (event) {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = function () {
+                        const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+                        socket.emit('save_recording', { blob, state, station });
+                        recordedChunks = [];
+
+                        document.getElementById('recordButton').disabled = false;
+                        document.getElementById('stopButton').disabled = true;
+                        document.getElementById('playRecordingButton').disabled = false;
+                        document.getElementById('downloadRecordingButton').disabled = false;
+                    };
+
+                    document.getElementById('recordButton').disabled = true;
+                    document.getElementById('stopButton').disabled = false;
+                    document.getElementById('playRecordingButton').disabled = true;
+                    document.getElementById('downloadRecordingButton').disabled = true;
+
+                    mediaRecorder.start();
+                })
+                .catch(function (error) {
+                    console.error('Error accessing microphone:', error);
+                });
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+        }
+
+        function downloadRecording() {
+            const state = document.getElementById('state').value;
+            const station = document.getElementById('station').value;
+            const filename = `${state}_${station}_recording.wav`;
+
+            fetch('/download_recording', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename }),
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            })
+            .catch(error => console.error('Error downloading recording:', error));
+        }
+
+        socket.on('stations_list', function(data) {
+            const stationSelect = document.getElementById('station');
+            stationSelect.innerHTML = '';
+
+            if ('stations' in data) {
+                data.stations.forEach(function(station) {
+                    const option = document.createElement('option');
+                    option.value = station;
+                    option.text = station;
+                    stationSelect.add(option);
+                });
+            } else if ('error' in data) {
+                alert(data.error);
+            }
+        });
+
+        socket.on('start_streaming', function(data) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            if ('streaming_url' in data) {
+                audioPlayer.src = data.streaming_url;
+                audioPlayer.play();
+            } else if ('error' in data) {
+                alert(data.error);
+            }
+        });
+
+        socket.on('send_recording', function (data) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = URL.createObjectURL(data.blob);
+            audioPlayer.play();
+        });
+    </script>
+</body>
+</html>
