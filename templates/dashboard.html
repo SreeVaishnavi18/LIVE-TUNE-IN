@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('https://images.unsplash.com/photo-1685103127857-312c0ab4aa91?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* Replace with the path to your background image */
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end; /* Align content to the right */
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+            background-color: rgba(153, 101, 21, 0.7); /* Vintage brown color, adjust as needed */
+            border-radius: 10px;
+            margin-top: -250px; /* Adjust to lift the box above */
+            margin-right: 20px;
+        }
+
+        h1 {
+            color: #fff; /* White text color for better readability on a dark background */
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="content">
+        <h1> Welcome To Live Tune Hub</h1>
+        <button onclick="redirectToSignIn()">Sign In</button>
+    </div>
+
+    <script>
+        function redirectToSignIn() {
+            // Redirect to the sign-in page
+            window.location.href = '/signin'; // Replace with the actual path to your sign-in page
+        }
+    </script>
+
+</body>
+</html>
